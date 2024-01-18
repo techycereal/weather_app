@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from scrape import get_weather  # Import the complete function from your auto_complete module
-
+from BotAnswer import query
 app = Flask(__name__)
 
 # Enable CORS for specific origin (http://localhost:5173)
@@ -27,3 +27,17 @@ def hello_world():
 
 if __name__ == '__main__':
     app.run()
+    
+@app.route('/query', methods=['POST', 'OPTIONS'])
+def weather_bot():
+    if request.method == 'OPTIONS':
+        # Handle CORS preflight request
+        response = jsonify()
+        response.headers.add('Access-Control-Allow-Methods', 'POST')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        return response
+    r = request.get_json()
+    answer = query(r['question'], r['weather'], r['temp'])
+    print(r['question'])
+    print(r['weather'], r['temp'])
+    return answer
