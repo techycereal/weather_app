@@ -1,12 +1,19 @@
 <template>
+
   <Header/>
+
   <div>
-    <input placeholder="Write your state code" class="input-bar" v-model="stateCode"/>
-    <input placeholder="Write your city" class="input-bar2" v-model="city"/>
+    <input placeholder="Write your state code" class="input-bar" :class="[{invalid : invalidState}, {error: shake}]" v-model="stateCode" />
+    <p v-if="invalidState" style="marginLeft: 45.5%; color: red">Too many characters</p>
+    <input placeholder="Write your city" class="input-bar2" v-model="city" :class="{error: shake}"/>
+    <p>{{ errorMsg }}</p>
     <button @click="submit" class="submit-button">Submit</button>
   </div>
+
   <WeatherCard :weather="weather" :loading="loading" :image="image"/>
+
   <EnterInfo :weather="weather"/>
+  
   <div v-if="loading === true" class="animationdiv">
   <img src="https://storesimages.blob.core.windows.net/images/misc/current/cloud.png" :class="{ floating: loading }"/>
   <p style="textAlign: center; fontSize: 100px">Loading</p>
@@ -14,7 +21,7 @@
 
   
 </template>
-
+ 
 <script>
 import axios from 'axios'
 import images from '../images.json'
@@ -31,23 +38,57 @@ export default {
     return {
       weather: {},
       loading: null,
-      image: ''
+      image: '',
+      stateCode: '',
+      invalidState: false,
+      errorMsg: '',
+      city: '',
+      shake: false,
     }
   },
   methods: {
     async submit(){
+      if (this.stateCode.length < 2 || this.city.length == 0){
+        this.shake = true
+        this.errorMsg = "Please fill out both fields"
+      } else {
+        this.shake = false
+        this.errorMsg = ""
+        this.stateCode = this.stateCode.toUpperCase()
+        this.loading = true
+        this.errorMsg = ''
+        const request = await axios.post('http://localhost:5000', {'code': this.stateCode, 'city': this.city}).catch((err) => {
+          if (err.response.status !== 200){
+            this.loading = null
+            this.errorMsg = "Could not return a valid response try a different state code or city if that doesn't work my services might be down"
+          }
+        })
+        console.log(request)
+        console.log(request.status)
+        this.weather = request.data
+        this.image = images['images'][this.weather['description']]
+        console.log(this.weather['description'])
+        this.startLoading()
+      }
       
-      this.loading = true
-      const request = await axios.post('http://localhost:5000', {'code': this.stateCode, 'city': this.city})
-      this.weather = request.data
-      this.image = images['images'][this.weather['description']]
-      this.startLoading()
     },
     startLoading(){
       setTimeout(() => {
         this.loading = false
       }, 4000);
     },
+  },
+  watch: {
+    stateCode(){
+      if (this.stateCode.length > 2){
+        this.invalidState = true
+        console.log(this.invalidState)
+      }
+      if (this.stateCode.length <= 2){
+        this.invalidState = false
+        console.log(this.invalidState)
+      }
+    }
   }
 
 }
@@ -78,6 +119,7 @@ html, body {
   font-size: 170%;
   color: #A7DCDC;
 }
+.invalid,
 .input-bar2,
 .input-bar{
   margin-top: 10%;
@@ -86,7 +128,7 @@ html, body {
   font-size: 20px;
   width: 13%;
   border-radius: 15px;
-  border: none;
+  border-color: white;
 }
 .input-bar2 {
   margin-top: 1%;
@@ -97,6 +139,10 @@ html, body {
   width: 13%;
   margin-left: 43%;
   border-radius: 15px;
+}
+.invalid {
+  border-color: red;
+  color: red;
 }
 .cards{
   margin: 0;
@@ -216,5 +262,15 @@ html, body {
 
 .floating {
     animation: float 7s linear infinite;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+  20%, 40%, 60%, 80% { transform: translateX(10px); }
+}
+
+.error {
+  animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both;
 }
 </style>
